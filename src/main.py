@@ -265,6 +265,48 @@ async def handle_message(message: types.Message):
     user_id = message.from_user.id
     text = message.text or ""
     
+    # ВАЖНО: Сначала проверяем состояния FSM, чтобы не обрабатывать как обычную команду
+    if user_id in user_states:
+        state = user_states[user_id]
+        if state["step"] == "waiting_description":
+            state["data"]["description"] = text
+            state["step"] = "waiting_amount"
+            await message.answer("Введите сумму (например: 4200):")
+            return
+        elif state["step"] == "waiting_amount":
+            try:
+                amount = float(text)
+                state["data"]["amount"] = amount
+                state["step"] = "waiting_participants"
+                await message.answer("Введите участников через @ (например: @Петя @Маша):")
+                return
+            except ValueError:
+                await message.answer("Неверный формат суммы. Введите число:")
+                return
+        elif state["step"] == "waiting_participants":
+            participants = [p.replace('@', '') for p in text.split() if p.startswith('@')]
+            if not participants:
+                await message.answer("Укажите участников через @ (например: @Петя @Маша):")
+                return
+            
+            # Создаём расход
+            expense_id = db.create_expense(
+                description=state["data"]["description"],
+                total_amount=state["data"]["amount"],
+                creator_username=username,
+                participants=participants
+            )
+            
+            amount_per_person = state["data"]["amount"] / len(participants)
+            response = f"✅ Расход создан!\n\n"
+            response += f"Описание: {state['data']['description']}\n"
+            response += f"Сумма: {int(state['data']['amount'])}р\n"
+            response += f"По {int(amount_per_person)}р с каждого"
+            
+            del user_states[user_id]
+            await message.answer(response, reply_markup=get_main_menu_keyboard())
+            return
+    
     # Обработка reply keyboard кнопок
     if text == "💳 Долги":
         debts = db.get_debts()
@@ -331,48 +373,6 @@ async def handle_message(message: types.Message):
             reply_markup=get_back_to_menu_keyboard()
         )
         return
-    
-    # Обработка состояний создания расхода
-    if user_id in user_states:
-        state = user_states[user_id]
-        if state["step"] == "waiting_description":
-            state["data"]["description"] = text
-            state["step"] = "waiting_amount"
-            await message.answer("Введите сумму (например: 4200):")
-            return
-        elif state["step"] == "waiting_amount":
-            try:
-                amount = float(text)
-                state["data"]["amount"] = amount
-                state["step"] = "waiting_participants"
-                await message.answer("Введите участников через @ (например: @Петя @Маша):")
-                return
-            except ValueError:
-                await message.answer("Неверный формат суммы. Введите число:")
-                return
-        elif state["step"] == "waiting_participants":
-            participants = [p.replace('@', '') for p in text.split() if p.startswith('@')]
-            if not participants:
-                await message.answer("Укажите участников через @ (например: @Петя @Маша):")
-                return
-            
-            # Создаём расход
-            expense_id = db.create_expense(
-                description=state["data"]["description"],
-                total_amount=state["data"]["amount"],
-                creator_username=username,
-                participants=participants
-            )
-            
-            amount_per_person = state["data"]["amount"] / len(participants)
-            response = f"✅ Расход создан!\n\n"
-            response += f"Описание: {state['data']['description']}\n"
-            response += f"Сумма: {int(state['data']['amount'])}р\n"
-            response += f"По {int(amount_per_person)}р с каждого"
-            
-            del user_states[user_id]
-            await message.answer(response, reply_markup=get_main_menu_keyboard())
-            return
     
     # Обычная обработка текстовых команд
     response = debt_bot.process_message(text, username)
