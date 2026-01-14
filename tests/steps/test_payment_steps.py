@@ -37,29 +37,45 @@ def user_owes_amount(username, amount, context):
     assert debt == amount
 
 
-@when(parsers.parse('{username} пишет "{message}"'))
-def user_pays_debt(username, message, context):
-    """Пользователь выплачивает долг"""
-    bot = context['bot']
-    response = bot.process_message(message, username)
-    context['response'] = response
-    context['debtor'] = username
+# Устаревшие step definitions для текстовых команд удалены
+# Теперь используются step definitions из test_keyboard_steps.py и обновлённые ниже
 
 
 @then(parsers.parse('долг {username} уменьшается на {amount:d} рублей'))
 def debt_decreases(username, amount, context):
     """Долг уменьшается"""
-    # Проверяем что долг уменьшился (через контекст)
-    assert 'response' in context
-    assert 'Принял' in context['response']
+    db = context['db']
+    creditor = context.get('payment_creditor', 'Вася')
+    old_debt = context.get('old_debt', 0)
+    new_debt = db.get_debt_amount(username, creditor)
+    assert old_debt - new_debt == amount or new_debt == old_debt - amount
 
 
 @then(parsers.parse('{username} больше не должен'))
 def user_no_longer_owes(username, context):
     """Пользователь больше не должен"""
     db = context['db']
-    debt = db.get_debt_amount(username, 'Вася')
+    creditor = context.get('payment_creditor', 'Вася')
+    debt = db.get_debt_amount(username, creditor)
     assert debt == 0
+
+
+@then("бот показывает сообщение об успешной выплате")
+def bot_shows_payment_success(context):
+    """Бот показывает сообщение об успехе"""
+    assert context.get('payment_success', False)
+
+
+@then("бот показывает сообщение о частичной выплате")
+def bot_shows_partial_payment(context):
+    """Бот показывает сообщение о частичной выплате"""
+    assert context.get('payment_success', False)
+    # Проверяем что долг не полностью погашен
+    db = context['db']
+    debtor = context.get('current_user', 'Петя')
+    creditor = context.get('payment_creditor', 'Вася')
+    remaining = db.get_debt_amount(debtor, creditor)
+    assert remaining > 0
 
 
 @then(parsers.parse('{username} должен ещё {amount:d} рублей'))
