@@ -49,9 +49,9 @@ def test_process_message_pay_debt(bot, db):
     # Создаём расход
     db.create_expense("пицца", 2000, "Вася", ["Петя"])
     
-    # Выплачиваем долг
-    message = "скинул Васе 2000"
-    response = bot.process_message(message, "Петя")
+    # Выплачиваем долг через БД напрямую (так как текстовые команды отключены)
+    success = db.pay_debt("Петя", "Вася", 2000)
+    assert success is True
     
     # Проверяем что долг погашен
     debt = db.get_debt_amount("Петя", "Вася")
