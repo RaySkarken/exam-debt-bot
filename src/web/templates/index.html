@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💰 Управление долгами</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💰 Управление долгами</h1>
+            <p class="subtitle">Отслеживайте долги за совместные покупки</p>
+        </header>
+
+        <nav class="tabs">
+            <button class="tab active" data-tab="debts">💳 Долги</button>
+            <button class="tab" data-tab="expenses">📦 Расходы</button>
+            <button class="tab" data-tab="statistics">📊 Статистика</button>
+            <button class="tab" data-tab="history">📜 История</button>
+        </nav>
+
+        <!-- Вкладка Долги -->
+        <div id="debts-tab" class="tab-content active">
+            <div class="section-header">
+                <h2>💳 Активные долги</h2>
+                <button class="btn btn-primary" onclick="loadDebts()">🔄 Обновить</button>
+            </div>
+            <div id="debts-list" class="debts-list">
+                <div class="loading">Загрузка...</div>
+            </div>
+        </div>
+
+        <!-- Вкладка Расходы -->
+        <div id="expenses-tab" class="tab-content">
+            <div class="section-header">
+                <h2>📦 Расходы</h2>
+                <button class="btn btn-primary" onclick="showCreateExpenseForm()">➕ Создать расход</button>
+            </div>
+            <div id="expenses-list" class="expenses-list">
+                <div class="loading">Загрузка...</div>
+            </div>
+        </div>
+
+        <!-- Вкладка Статистика -->
+        <div id="statistics-tab" class="tab-content">
+            <div class="section-header">
+                <h2>📊 Статистика</h2>
+                <button class="btn btn-primary" onclick="loadStatistics()">🔄 Обновить</button>
+            </div>
+            <div id="statistics-content" class="statistics-content">
+                <div class="loading">Загрузка...</div>
+            </div>
+        </div>
+
+        <!-- Вкладка История -->
+        <div id="history-tab" class="tab-content">
+            <div class="section-header">
+                <h2>📜 История операций</h2>
+                <button class="btn btn-primary" onclick="loadHistory()">🔄 Обновить</button>
+            </div>
+            <div id="history-list" class="history-list">
+                <div class="loading">Загрузка...</div>
+            </div>
+        </div>
+
+        <!-- Модальное окно создания расхода -->
+        <div id="expense-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2>📝 Создать расход</h2>
+                <form id="expense-form" onsubmit="createExpense(event)">
+                    <div class="form-group">
+                        <label>Описание:</label>
+                        <input type="text" name="description" required placeholder="Например: пицца">
+                    </div>
+                    <div class="form-group">
+                        <label>Сумма:</label>
+                        <input type="number" name="amount" required placeholder="4200" step="0.01" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label>Создатель (кто платил):</label>
+                        <input type="text" name="creator" required placeholder="Ваше имя">
+                    </div>
+                    <div class="form-group">
+                        <label>Участники (через запятую):</label>
+                        <input type="text" name="participants" required placeholder="Петя, Маша, Коля">
+                        <small>Укажите имена через запятую</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">✅ Создать</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Модальное окно выплаты -->
+        <div id="payment-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal()">&times;</span>
+                <h2>💸 Выплата долга</h2>
+                <form id="payment-form" onsubmit="createPayment(event)">
+                    <input type="hidden" name="debtor" id="payment-debtor">
+                    <input type="hidden" name="creditor" id="payment-creditor">
+                    <div class="form-group">
+                        <label>Должник:</label>
+                        <input type="text" id="payment-debtor-display" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Кредитор:</label>
+                        <input type="text" id="payment-creditor-display" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label>Сумма выплаты:</label>
+                        <input type="number" name="amount" required step="0.01" min="0" id="payment-amount">
+                    </div>
+                    <button type="submit" class="btn btn-primary">✅ Выплатить</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
+
