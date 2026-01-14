@@ -71,64 +71,63 @@ class TestWebInterface:
         """Тест: модальное окно создания расхода открывается"""
         # Переходим на вкладку Расходы
         page.locator('button[data-tab="expenses"]').click()
-        time.sleep(0.5)
+        expect(page.locator("#expenses-tab")).to_have_class("tab-content active")
 
         # Нажимаем кнопку создания расхода
         page.locator('button:has-text("➕ Создать расход")').click()
-        time.sleep(0.5)
 
         # Проверяем, что модальное окно открылось
         expect(page.locator("#expense-modal")).to_be_visible()
-        expect(page.locator("#expense-modal h3")).to_contain_text("📝 Создать расход")
+        # В шаблоне заголовок модалки - h2
+        expect(page.locator("#expense-modal h2")).to_contain_text("📝 Создать расход")
 
         # Проверяем наличие полей формы
-        expect(page.locator('input[name="description"]')).to_be_visible()
-        expect(page.locator('input[name="amount"]')).to_be_visible()
-        expect(page.locator('input[name="creator"]')).to_be_visible()
-        expect(page.locator('input[name="participants"]')).to_be_visible()
+        expect(page.locator('#expense-form input[name="description"]')).to_be_visible()
+        expect(page.locator('#expense-form input[name="amount"]')).to_be_visible()
+        expect(page.locator('#expense-form input[name="creator"]')).to_be_visible()
+        expect(page.locator('#expense-form input[name="participants"]')).to_be_visible()
 
         # Закрываем модальное окно
-        page.locator('button:has-text("Отмена")').click()
-        time.sleep(0.5)
+        page.locator('#expense-modal button:has-text("Отмена")').click()
         expect(page.locator("#expense-modal")).not_to_be_visible()
 
     def test_create_expense_form(self, page: Page):
         """Тест: создание расхода через форму"""
         # Переходим на вкладку Расходы
         page.locator('button[data-tab="expenses"]').click()
-        time.sleep(0.5)
+        expect(page.locator("#expenses-tab")).to_have_class("tab-content active")
 
         # Открываем форму создания расхода
         page.locator('button:has-text("➕ Создать расход")').click()
-        time.sleep(0.5)
+        expect(page.locator("#expense-modal")).to_be_visible()
 
         # Заполняем форму
-        page.locator('input[name="description"]').fill("Тестовый расход")
-        page.locator('input[name="amount"]').fill("1000")
-        page.locator('input[name="creator"]').fill("Тестер")
-        page.locator('input[name="participants"]').fill("Тестер, Друг")
+        page.locator('#expense-form input[name="description"]').fill("Тестовый расход")
+        # На странице есть два input[name=amount] (расход + выплата), поэтому уточняем форму
+        page.locator('#expense-form input[name="amount"]').fill("1000")
+        page.locator('#expense-form input[name="creator"]').fill("Тестер")
+        page.locator('#expense-form input[name="participants"]').fill("Тестер, Друг")
 
         # Отправляем форму
-        page.locator('button:has-text("✅ Создать")').click()
-        time.sleep(1)
+        page.locator('#expense-form button:has-text("✅ Создать")').click()
 
         # Проверяем, что форма закрылась
         expect(page.locator("#expense-modal")).not_to_be_visible()
 
     def test_refresh_buttons(self, page: Page):
         """Тест: кнопки обновления работают"""
-        # Проверяем кнопку обновления в разделе долгов
-        page.locator('button:has-text("🔄 Обновить")').first.click()
-        time.sleep(0.5)
+        # Проверяем кнопку обновления в разделе долгов (должна быть видимой на активной вкладке)
+        page.locator('button[data-tab="debts"]').click()
+        expect(page.locator("#debts-tab")).to_have_class("tab-content active")
+        page.locator('#debts-tab button:has-text("🔄 Обновить")').click()
         expect(page.locator("#debts-tab")).to_be_visible()
 
         # Переходим на вкладку Статистика
         page.locator('button[data-tab="statistics"]').click()
-        time.sleep(0.5)
+        expect(page.locator("#statistics-tab")).to_have_class("tab-content active")
 
         # Проверяем кнопку обновления статистики
-        page.locator('button:has-text("🔄 Обновить")').first.click()
-        time.sleep(0.5)
+        page.locator('#statistics-tab button:has-text("🔄 Обновить")').click()
         expect(page.locator("#statistics-tab")).to_be_visible()
 
     def test_api_endpoints(self, page: Page):
@@ -165,7 +164,7 @@ class TestWebInterface:
 
             # Проверяем, что модальное окно открылось
             expect(page.locator("#payment-modal")).to_be_visible()
-            expect(page.locator("#payment-modal h3")).to_contain_text("💸 Выплата долга")
+            expect(page.locator("#payment-modal h2")).to_contain_text("💸 Выплата долга")
 
             # Закрываем модальное окно
             page.locator('#payment-modal button:has-text("Отмена")').click()
