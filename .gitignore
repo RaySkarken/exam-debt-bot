@@ -42,6 +42,9 @@ test_data/
 .env
 .env.local
 
+# Security audit files (не коммитить)
+SECURITY_FIXES.md
+
 # Logs
 *.log
 
