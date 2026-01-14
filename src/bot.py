@@ -3,7 +3,7 @@ Telegram бот для отслеживания долгов
 Роль: Разработчик
 """
 import re
-from typing import Optional
+from typing import Optional, Dict
 from src.database import Database
 
 
