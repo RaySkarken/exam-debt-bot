@@ -63,10 +63,22 @@ async def cmd_start(message: types.Message):
 @dp.callback_query(F.data == "main_menu")
 async def callback_main_menu(callback: CallbackQuery):
     """Обработчик кнопки 'Главное меню'"""
-    await callback.message.edit_text(
-        "📱 Главное меню:",
-        reply_markup=get_main_menu_keyboard()
-    )
+    user_id = callback.from_user.id
+    # Очищаем состояние FSM если было
+    if user_id in user_states:
+        del user_states[user_id]
+    
+    try:
+        await callback.message.edit_text(
+            "📱 Главное меню:",
+            reply_markup=get_main_menu_keyboard()
+        )
+    except Exception:
+        # Если не удалось отредактировать (например, это новое сообщение), отправляем новое
+        await callback.message.answer(
+            "📱 Главное меню:",
+            reply_markup=get_main_menu_keyboard()
+        )
     await callback.answer()
 
 
@@ -176,10 +188,17 @@ async def callback_help(callback: CallbackQuery):
         "📊 Статистика:\n"
         "Показывает общую информацию о долгах"
     )
-    await callback.message.edit_text(
-        help_text,
-        reply_markup=get_back_to_menu_keyboard()
-    )
+    try:
+        await callback.message.edit_text(
+            help_text,
+            reply_markup=get_back_to_menu_keyboard()
+        )
+    except Exception:
+        # Если не удалось отредактировать, отправляем новое сообщение
+        await callback.message.answer(
+            help_text,
+            reply_markup=get_back_to_menu_keyboard()
+        )
     await callback.answer()
 
 
@@ -250,11 +269,19 @@ async def callback_create_expense(callback: CallbackQuery):
     user_id = callback.from_user.id
     user_states[user_id] = {"step": "waiting_description", "data": {}}
     
-    await callback.message.edit_text(
-        "📝 Создание расхода\n\n"
-        "Введите описание расхода (например: пицца):",
-        reply_markup=get_back_to_menu_keyboard()
-    )
+    try:
+        await callback.message.edit_text(
+            "📝 Создание расхода\n\n"
+            "Введите описание расхода (например: пицца):",
+            reply_markup=get_back_to_menu_keyboard()
+        )
+    except Exception:
+        # Если не удалось отредактировать, отправляем новое сообщение
+        await callback.message.answer(
+            "📝 Создание расхода\n\n"
+            "Введите описание расхода (например: пицца):",
+            reply_markup=get_back_to_menu_keyboard()
+        )
     await callback.answer()
 
 
