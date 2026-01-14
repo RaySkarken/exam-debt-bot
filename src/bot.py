@@ -201,12 +201,109 @@ class DebtBot:
 • Активных долгов: {stats['debt_count']}
 • Общая сумма: {int(stats['total_debt'])}р"""
         
+        # История операций
+        if message.strip() == "история":
+            history = self.db.get_operation_history(limit=20)
+            if not history:
+                return "История пуста"
+            
+            history_lines = []
+            for op in history:
+                date_str = op['created_at'].strftime('%d.%m %H:%M')
+                history_lines.append(f"{date_str} | {op['username']}: {op['description']}")
+            
+            return "📜 История операций:\n" + '\n'.join(history_lines)
+        
+        # История конкретного расхода
+        pattern = r'история\s+(\w+)'
+        match = re.match(pattern, message)
+        if match:
+            description = match.group(1)
+            expense = self.db.get_expense_by_description(description)
+            if not expense:
+                return f"Расход '{description}' не найден"
+            
+            history = self.db.get_operation_history(expense_id=expense['id'])
+            if not history:
+                return f"История расхода '{description}' пуста"
+            
+            history_lines = []
+            for op in history:
+                date_str = op['created_at'].strftime('%d.%m %H:%M')
+                history_lines.append(f"{date_str} | {op['username']}: {op['description']}")
+            
+            return f"📜 История расхода '{description}':\n" + '\n'.join(history_lines)
+        
+        # Детали расхода
+        pattern = r'расход\s+(\w+)'
+        match = re.match(pattern, message)
+        if match:
+            description = match.group(1)
+            expense = self.db.get_expense_by_description(description)
+            if not expense:
+                return "Расход не найден"
+            
+            lines = [
+                f"📋 Расход: {expense['description']}",
+                f"💰 Сумма: {int(expense['total_amount'])}р",
+                f"👤 Создатель: {expense['creator_username']}",
+                f"📅 Создан: {expense['created_at'].strftime('%d.%m.%Y %H:%M')}",
+                "",
+                "💳 Долги:"
+            ]
+            
+            for debt in expense['debts']:
+                if debt['remaining'] > 0:
+                    lines.append(f"  • {debt['debtor']} должен {debt['creditor']} {int(debt['remaining'])}р")
+                else:
+                    lines.append(f"  ✅ {debt['debtor']} заплатил {int(debt['paid'])}р")
+            
+            return '\n'.join(lines)
+        
+        # Долги по расходам (группировка)
+        if message.strip() == "долги по расходам":
+            grouped = self.db.get_debts_grouped_by_expense()
+            
+            if not grouped:
+                return "Нет активных долгов 🎉"
+            
+            lines = []
+            for description, debts in grouped.items():
+                lines.append(f"\n📦 {description}:")
+                for debt in debts:
+                    lines.append(f"  • {debt['debtor']} должен {debt['creditor']} {int(debt['remaining'])}р")
+            
+            return "💳 Долги по расходам:" + '\n'.join(lines)
+        
+        # Отмена расхода
+        pattern = r'отменить\s+(\w+)'
+        match = re.match(pattern, message)
+        if match:
+            description = match.group(1)
+            expense = self.db.get_expense_by_description(description)
+            
+            if not expense:
+                return "Расход не найден"
+            
+            # Проверяем что пользователь - создатель
+            success = self.db.cancel_expense(expense['id'], username)
+            
+            if not success:
+                return "Вы не можете отменить этот расход. Только создатель может отменить"
+            
+            return f"Расход '{description}' отменён. Все долги удалены"
+        
         # Неизвестная команда
         return """Доступные команды:
 • "описание сумма @участник1 @участник2" - создать расход
 • "скинул @кредитор сумма" - выплатить долг
 • "долги" - показать все долги
 • "долги @кредитор" - долги конкретному человеку
+• "долги по расходам" - долги сгруппированные по расходам
+• "расход описание" - детали расхода
+• "история" - история операций
+• "история описание" - история конкретного расхода
+• "отменить описание" - отменить расход (только создатель)
 • "статистика" - общая статистика
 • "статистика @пользователь" - статистика по пользователю"""
 
