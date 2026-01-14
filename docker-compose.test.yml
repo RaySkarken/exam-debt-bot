@@ -7,23 +7,21 @@ services:
     image: alpine:latest
     volumes:
       - ./test_data:/app/data
-      - ./test_debts.db:/app/test_debts.db
     command: /bin/sh -c "while true; do sleep 3600; done"
 
   # Веб-приложение для тестов
   test-web:
     build: .
     container_name: debt-web-test
-    command: python src/web/app.py
+    command: /bin/sh -c "mkdir -p /app/data && python src/web/app.py"
     environment:
       - FLASK_ENV=testing
-      - DATABASE_PATH=/app/test_debts.db
+      - DATABASE_PATH=/app/data/test_debts.db
       - PYTHONPATH=/app
     ports:
       - "5002:5000"
     volumes:
       - ./test_data:/app/data
-      - ./test_debts.db:/app/test_debts.db
       - .:/app
     networks:
       - test-network
@@ -41,12 +39,11 @@ services:
     container_name: debt-test-runner
     environment:
       - FLASK_ENV=testing
-      - DATABASE_PATH=/app/test_debts.db
+      - DATABASE_PATH=/app/data/test_debts.db
       - PYTHONPATH=/app
       - TEST_WEB_URL=http://test-web:5000
     volumes:
       - ./test_data:/app/data
-      - ./test_debts.db:/app/test_debts.db
       - .:/app
       - ./htmlcov:/app/htmlcov
     networks:
