@@ -128,6 +128,26 @@ docker-compose run --rm bot bash
 docker-compose exec bot python -c "from src.database import Database; db = Database(); print(db.get_statistics())"
 ```
 
+## 🧪 Тестовое окружение
+
+Для запуска тестов в Docker используется отдельный compose файл `docker-compose.test.yml`:
+
+```bash
+# Запуск всех тестов в Docker
+./scripts/run_tests.sh
+
+# Или вручную
+docker-compose -f docker-compose.test.yml up --build test-runner
+```
+
+**Особенности тестового окружения:**
+- Отдельная тестовая БД (`test_debts.db`) для изоляции тестов
+- Веб-приложение для тестов на порту 5002
+- Healthcheck для веб-приложения перед запуском тестов
+- Автоматическая генерация coverage отчёта
+
+Подробнее в [TESTING.md](TESTING.md)
+
 ## 🚢 Production
 
 Для production рекомендуется:
