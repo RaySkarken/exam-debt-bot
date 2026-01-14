@@ -4,7 +4,7 @@
 """
 import sqlite3
 from datetime import datetime
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 
@@ -246,6 +246,54 @@ class Database:
         
         conn.close()
         return debts
+    
+    def get_statistics(self, username: Optional[str] = None) -> Dict:
+        """
+        Получить статистику по долгам
+        
+        Args:
+            username: Если указан, статистика для конкретного пользователя
+        
+        Returns:
+            Словарь со статистикой
+        """
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        
+        if username:
+            # Статистика для конкретного пользователя
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as debt_count,
+                    SUM(amount - paid_amount) as total_debt
+                FROM debts
+                WHERE debtor_username = ? AND (amount - paid_amount) > 0
+            """, (username,))
+        else:
+            # Общая статистика
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as debt_count,
+                    SUM(amount - paid_amount) as total_debt,
+                    COUNT(DISTINCT debtor_username) as debtors_count,
+                    COUNT(DISTINCT creditor_username) as creditors_count
+                FROM debts
+                WHERE (amount - paid_amount) > 0
+            """)
+        
+        result = cursor.fetchone()
+        conn.close()
+        
+        stats = {
+            'debt_count': result['debt_count'] or 0,
+            'total_debt': result['total_debt'] or 0.0
+        }
+        
+        if not username:
+            stats['debtors_count'] = result['debtors_count'] or 0
+            stats['creditors_count'] = result['creditors_count'] or 0
+        
+        return stats
     
     def get_debt_amount(self, debtor_username: str, creditor_username: str) -> float:
         """Получить сумму долга между двумя пользователями"""
