@@ -22,7 +22,7 @@ services:
     container_name: debt-web
     command: python src/web/app.py
     ports:
-      - "5000:5000"
+      - "5001:5000"
     volumes:
       - ./data:/app/data
       - ./debts.db:/app/debts.db
