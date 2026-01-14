@@ -16,34 +16,8 @@ def bot_is_running(db, context):
     return bot
 
 
-@when(parsers.parse('пользователь пишет "{message}"'))
-def user_sends_message(message, bot_instance, context):
-    """Пользователь отправляет сообщение"""
-    bot = context['bot']
-    db = context['db']
-    
-    # Обрабатываем сообщение через бота
-    response = bot.process_message(message, 'Вася')
-    context['response'] = response
-    context['message'] = message
-    
-    # Парсим для проверок
-    if message.startswith('пицца') or message.startswith('кофе') or message.startswith('обед'):
-        parts = message.split()
-        if len(parts) >= 2:
-            try:
-                amount = float(parts[1])
-                participants = [p.replace('@', '') for p in parts[2:] if p.startswith('@')]
-                
-                if participants:
-                    context['amount'] = amount
-                    context['participants'] = participants
-                    context['amount_per_person'] = amount / len(participants)
-                    # Проверяем что расход создан
-                    debts = db.get_debts(creditor_username='Вася')
-                    context['expense_created'] = len(debts) > 0
-            except ValueError:
-                pass
+# Устаревшие step definitions для текстовых команд удалены
+# Теперь используются step definitions из test_keyboard_steps.py
 
 
 @then(parsers.parse('бот создаёт расход на {amount:d} рублей'))
