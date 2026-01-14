@@ -272,14 +272,16 @@ async def callback_create_expense(callback: CallbackQuery):
     try:
         await callback.message.edit_text(
             "📝 Создание расхода\n\n"
-            "Введите описание расхода (например: пицца):",
+            "Введите описание расхода (например: пицца):\n\n"
+            "💡 Напишите 'отмена' чтобы отменить",
             reply_markup=get_back_to_menu_keyboard()
         )
     except Exception:
         # Если не удалось отредактировать, отправляем новое сообщение
         await callback.message.answer(
             "📝 Создание расхода\n\n"
-            "Введите описание расхода (например: пицца):",
+            "Введите описание расхода (например: пицца):\n\n"
+            "💡 Напишите 'отмена' чтобы отменить",
             reply_markup=get_back_to_menu_keyboard()
         )
     await callback.answer()
@@ -292,28 +294,62 @@ async def handle_message(message: types.Message):
     user_id = message.from_user.id
     text = message.text or ""
     
-    # ВАЖНО: Сначала проверяем состояния FSM, чтобы не обрабатывать как обычную команду
+    # ВАЖНО: Если пользователь в процессе создания расхода, обрабатываем ТОЛЬКО FSM
+    # Игнорируем все текстовые команды пока не завершится процесс
     if user_id in user_states:
         state = user_states[user_id]
+        
+        # Проверяем не отмена ли это
+        if text.strip().lower() in ["отмена", "cancel", "назад"]:
+            del user_states[user_id]
+            await message.answer(
+                "❌ Создание расхода отменено",
+                reply_markup=get_main_menu_keyboard()
+            )
+            return
+        
         if state["step"] == "waiting_description":
-            state["data"]["description"] = text
+            if not text.strip():
+                await message.answer("Введите описание расхода (например: пицца):")
+                return
+            state["data"]["description"] = text.strip()
             state["step"] = "waiting_amount"
-            await message.answer("Введите сумму (например: 4200):")
+            await message.answer(
+                "Введите сумму (например: 4200):\n\n"
+                "💡 Напишите 'отмена' чтобы отменить",
+                reply_markup=get_back_to_menu_keyboard()
+            )
             return
         elif state["step"] == "waiting_amount":
+            if not text.strip():
+                await message.answer("Введите сумму (например: 4200):")
+                return
             try:
-                amount = float(text)
+                amount = float(text.strip())
+                if amount <= 0:
+                    await message.answer("Сумма должна быть больше нуля. Введите сумму:")
+                    return
                 state["data"]["amount"] = amount
                 state["step"] = "waiting_participants"
-                await message.answer("Введите участников через @ (например: @Петя @Маша):")
+                await message.answer(
+                    "Введите участников через @ (например: @Петя @Маша):\n\n"
+                    "💡 Напишите 'отмена' чтобы отменить",
+                    reply_markup=get_back_to_menu_keyboard()
+                )
                 return
             except ValueError:
-                await message.answer("Неверный формат суммы. Введите число:")
+                await message.answer("Неверный формат суммы. Введите число (например: 4200):")
                 return
         elif state["step"] == "waiting_participants":
+            if not text.strip():
+                await message.answer("Введите участников через @ (например: @Петя @Маша):")
+                return
             participants = [p.replace('@', '') for p in text.split() if p.startswith('@')]
             if not participants:
-                await message.answer("Укажите участников через @ (например: @Петя @Маша):")
+                await message.answer(
+                    "Укажите участников через @ (например: @Петя @Маша):\n\n"
+                    "💡 Напишите 'отмена' чтобы отменить"
+                )
                 return
             
             # Создаём расход
@@ -326,15 +362,19 @@ async def handle_message(message: types.Message):
             
             amount_per_person = state["data"]["amount"] / len(participants)
             response = f"✅ Расход создан!\n\n"
-            response += f"Описание: {state['data']['description']}\n"
-            response += f"Сумма: {int(state['data']['amount'])}р\n"
-            response += f"По {int(amount_per_person)}р с каждого"
+            response += f"📋 Описание: {state['data']['description']}\n"
+            response += f"💰 Сумма: {int(state['data']['amount'])}р\n"
+            response += f"👥 Участников: {len(participants)}\n"
+            response += f"💸 По {int(amount_per_person)}р с каждого"
             
             del user_states[user_id]
             await message.answer(response, reply_markup=get_main_menu_keyboard())
             return
+        
+        # Если мы здесь, значит состояние есть но шаг не распознан - сбрасываем
+        del user_states[user_id]
     
-    # Обработка reply keyboard кнопок
+    # Обработка reply keyboard кнопок (только если НЕ в FSM)
     if text == "💳 Долги":
         debts = db.get_debts()
         user_debts = [d for d in debts if d['debtor'] == username]
@@ -401,9 +441,22 @@ async def handle_message(message: types.Message):
         )
         return
     
-    # Обычная обработка текстовых команд
-    response = debt_bot.process_message(text, username)
-    await message.answer(response, reply_markup=get_main_menu_keyboard())
+    # Обычная обработка текстовых команд (только если НЕ в FSM)
+    # Но для упрощения - показываем подсказку про кнопки
+    if text.strip() and not text.startswith("/"):
+        # Если это не команда и не пустое - показываем подсказку
+        response = (
+            "💡 Используйте кнопки для работы с ботом!\n\n"
+            "Или введите команду текстом:\n"
+            "• \"пицца 4200 @Петя @Маша\" - создать расход\n"
+            "• \"долги\" - показать долги\n"
+            "• \"статистика\" - статистика"
+        )
+        await message.answer(response, reply_markup=get_main_menu_keyboard())
+    else:
+        # Обрабатываем как команду
+        response = debt_bot.process_message(text, username)
+        await message.answer(response, reply_markup=get_main_menu_keyboard())
 
 
 async def main():
