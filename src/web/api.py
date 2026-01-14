@@ -4,9 +4,13 @@ REST API для веб-приложения
 """
 from flask import Blueprint, jsonify, request
 from src.database import Database
+import os
 
 api_bp = Blueprint('api', __name__)
-db = Database()
+
+# Используем тестовую БД если указана переменная окружения
+db_path = os.getenv('DATABASE_PATH', 'debts.db')
+db = Database(db_path=db_path)
 
 
 @api_bp.route('/debts', methods=['GET'])

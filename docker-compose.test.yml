@@ -1,0 +1,112 @@
+# docker-compose.test.yml для запуска тестов
+# Роль: DevOps - тестовое окружение
+
+services:
+  # Тестовая база данных (используется отдельный файл)
+  test-db:
+    image: alpine:latest
+    volumes:
+      - ./test_data:/app/data
+      - ./test_debts.db:/app/test_debts.db
+    command: /bin/sh -c "while true; do sleep 3600; done"
+
+  # Веб-приложение для тестов
+  test-web:
+    build: .
+    container_name: debt-web-test
+    command: python src/web/app.py
+    environment:
+      - FLASK_ENV=testing
+      - DATABASE_PATH=/app/test_debts.db
+      - PYTHONPATH=/app
+    ports:
+      - "5002:5000"
+    volumes:
+      - ./test_data:/app/data
+      - ./test_debts.db:/app/test_debts.db
+      - .:/app
+    networks:
+      - test-network
+    depends_on:
+      - test-db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Сервис для запуска тестов
+  test-runner:
+    build: .
+    container_name: debt-test-runner
+    environment:
+      - FLASK_ENV=testing
+      - DATABASE_PATH=/app/test_debts.db
+      - PYTHONPATH=/app
+      - TEST_WEB_URL=http://test-web:5000
+    volumes:
+      - ./test_data:/app/data
+      - ./test_debts.db:/app/test_debts.db
+      - .:/app
+      - ./htmlcov:/app/htmlcov
+    networks:
+      - test-network
+    depends_on:
+      test-web:
+        condition: service_healthy
+    command: /bin/sh -c "sleep 3 && pytest tests/ -v --cov=src --cov-report=html --cov-report=term"
+
+  # Сервис для запуска тестов
+  test-runner:
+    build: .
+    container_name: debt-test-runner
+    environment:
+      - FLASK_ENV=testing
+      - DATABASE_PATH=/app/test_debts.db
+      - PYTHONPATH=/app
+      - TEST_WEB_URL=http://test-web:5000
+    volumes:
+      - ./test_data:/app/data
+      - ./test_debts.db:/app/test_debts.db
+      - .:/app
+      - ./htmlcov:/app/htmlcov
+    networks:
+      - test-network
+    depends_on:
+      test-web:
+        condition: service_healthy
+    command: /bin/sh -c "sleep 3 && pytest tests/ -v --cov=src --cov-report=html --cov-report=term"
+
+  # Healthcheck для веб-приложения
+  test-web:
+    build: .
+    container_name: debt-web-test
+    command: python src/web/app.py
+    environment:
+      - FLASK_ENV=testing
+      - DATABASE_PATH=/app/test_debts.db
+      - PYTHONPATH=/app
+    ports:
+      - "5002:5000"
+    volumes:
+      - ./test_data:/app/data
+      - ./test_debts.db:/app/test_debts.db
+      - .:/app
+    networks:
+      - test-network
+    depends_on:
+      - test-db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+networks:
+  test-network:
+    driver: bridge
+
+volumes:
+  test_data:
+    driver: local
+

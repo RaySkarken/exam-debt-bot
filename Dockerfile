@@ -9,6 +9,7 @@ WORKDIR /app
 # Установка системных зависимостей
 RUN apt-get update && apt-get install -y \
     gcc \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Копирование файлов зависимостей
@@ -16,6 +17,10 @@ COPY requirements.txt .
 
 # Установка Python зависимостей
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Установка браузеров для Playwright (для E2E тестов)
+RUN playwright install chromium || true
+RUN playwright install-deps chromium || true
 
 # Копирование исходного кода
 COPY . .
