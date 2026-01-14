@@ -30,23 +30,18 @@ def get_debts():
 @api_bp.route('/expenses', methods=['GET'])
 def get_expenses():
     """Получить список расходов"""
-    # Получаем все расходы через долги
-    debts = db.get_debts()
-    expenses_dict = {}
+    # Получаем долги сгруппированные по расходам
+    grouped = db.get_debts_grouped_by_expense()
     
-    for debt in debts:
-        expense_id = debt.get('id')  # Это ID долга, нужно получить expense_id
-        description = debt.get('description', 'расход')
-        if description not in expenses_dict:
-            expenses_dict[description] = {
-                'description': description,
-                'total_amount': 0,
-                'debts': []
-            }
-        expenses_dict[description]['debts'].append(debt)
-        expenses_dict[description]['total_amount'] += debt.get('amount', 0)
-    
-    expenses = list(expenses_dict.values())
+    expenses = []
+    for description, debts in grouped.items():
+        total_amount = sum(d['amount'] for d in debts)
+        expenses.append({
+            'description': description,
+            'total_amount': total_amount,
+            'debts_count': len(debts),
+            'debts': debts
+        })
     
     return jsonify({
         'success': True,
