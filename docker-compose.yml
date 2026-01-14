@@ -1,0 +1,44 @@
+# docker-compose.yml для запуска приложения
+# Роль: DevOps - оркестрация контейнеров
+
+version: '3.8'
+
+services:
+  # Telegram бот
+  bot:
+    build: .
+    container_name: debt-bot
+    command: python src/main.py
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./debts.db:/app/debts.db
+    restart: unless-stopped
+    networks:
+      - debt-network
+
+  # Веб-приложение
+  web:
+    build: .
+    container_name: debt-web
+    command: python src/web/app.py
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+      - ./debts.db:/app/debts.db
+    restart: unless-stopped
+    networks:
+      - debt-network
+    depends_on:
+      - bot
+
+networks:
+  debt-network:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local
+
