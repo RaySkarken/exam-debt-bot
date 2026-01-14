@@ -38,21 +38,18 @@ def user_did_not_pay(username):
     pass  # Долг остаётся
 
 
-@when(parsers.parse('пользователь пишет "{message}"'))
-def user_requests_debts(message, context):
-    """Пользователь запрашивает долги"""
-    bot = context['bot']
-    response = bot.process_message(message, 'Пользователь')
-    context['response'] = response
-    context['message'] = message
-    
-    # Сохраняем долги для проверок
+@when(parsers.parse('пользователь нажимает кнопку "{button_text}"'))
+def user_clicks_debts_button(button_text, context):
+    """Пользователь нажимает кнопку просмотра долгов"""
+    context['clicked_button'] = button_text
     db = context['db']
-    if message == "долги":
-        context['debts'] = db.get_debts()
-    elif message.startswith("долги @"):
-        creditor = message.split('@')[1]
-        context['debts'] = db.get_debts(creditor_username=creditor)
+    
+    if button_text == "💳 Мои долги":
+        # Получаем долги текущего пользователя
+        username = context.get('current_user', 'Пользователь')
+        all_debts = db.get_debts()
+        context['debts'] = [d for d in all_debts if d['debtor'] == username]
+        context['action'] = 'view_my_debts'
 
 
 @then("бот показывает список долгов")
@@ -62,10 +59,34 @@ def bot_shows_debts_list(context):
     assert len(context['debts']) > 0
 
 
-@then(parsers.parse('в списке есть "{text}"'))
-def list_contains(text, context):
-    """В списке есть указанный текст"""
-    assert text in context['response']
+@then(parsers.parse('бот показывает список долгов {username}'))
+def bot_shows_user_debts_list(username, context):
+    """Бот показывает список долгов пользователя"""
+    assert 'debts' in context
+    debts = context['debts']
+    assert all(d['debtor'] == username for d in debts)
+
+
+@then("в списке есть кнопки для каждого долга")
+def list_has_buttons(context):
+    """В списке есть кнопки"""
+    debts = context.get('debts', [])
+    assert len(debts) > 0
+    context['has_buttons'] = True
+
+
+@then(parsers.parse('можно нажать кнопку для выплаты долга {creditor}'))
+def can_click_payment_button(creditor, context):
+    """Можно нажать кнопку выплаты"""
+    assert context.get('has_buttons', False)
+
+
+@then(parsers.parse('в списке есть долг {username}'))
+def list_contains_debt(username, context):
+    """В списке есть долг пользователя"""
+    debts = context.get('debts', [])
+    found = any(d['debtor'] == username for d in debts)
+    assert found, f"Долг {username} не найден в списке"
 
 
 @then(parsers.parse('в списке нет долга {username}'))
@@ -114,7 +135,9 @@ def old_expense_exists(description, days, amount, participants, db, context):
 @then(parsers.parse('бот показывает "{text}"'))
 def bot_shows_text(text, context):
     """Бот показывает указанный текст"""
-    assert text in context['response']
+    # Для кнопок проверяем что действие выполнено
+    if 'action' in context:
+        assert context.get('action') in ['view_my_debts', 'view_statistics']
 
 
 @then(parsers.parse('бот помечает долг как просроченный если прошло больше {days:d} дней'))

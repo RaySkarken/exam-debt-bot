@@ -19,9 +19,14 @@ def client():
     
     # Заменяем БД в app на тестовую
     with app.app_context():
-        from src.web.api import db
-        db.db_path = path
-        db.init_db()
+        from src.web.api import api_bp
+        from src.database import Database
+        test_db = Database()
+        test_db.db_path = path
+        test_db.init_db()
+        # Заменяем db в api_bp
+        import src.web.api
+        src.web.api.db = test_db
     
     app.config['TESTING'] = True
     with app.test_client() as client:
