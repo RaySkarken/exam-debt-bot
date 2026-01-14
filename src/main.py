@@ -43,18 +43,10 @@ async def cmd_start(message: types.Message):
     """Обработчик команды /start"""
     welcome_text = (
         "💰 Бот для отслеживания долгов\n\n"
-        "Используйте кнопки ниже для быстрого доступа к функциям!\n\n"
-        "Или введите команды текстом:\n"
-        "• \"пицца 4200 @Петя @Маша\" - создать расход\n"
-        "• \"скинул Васе 700\" - выплатить долг\n"
-        "• \"долги\" - показать все долги"
+        "Используйте кнопки ниже для работы с ботом!"
     )
     await message.answer(
         welcome_text,
-        reply_markup=get_reply_keyboard()
-    )
-    await message.answer(
-        "📱 Главное меню:",
         reply_markup=get_main_menu_keyboard()
     )
 
@@ -92,10 +84,16 @@ async def callback_my_debts(callback: CallbackQuery):
     user_debts = [d for d in debts if d['debtor'] == username]
     
     if not user_debts:
-        await callback.message.edit_text(
-            "🎉 У вас нет активных долгов!",
-            reply_markup=get_back_to_menu_keyboard()
-        )
+        try:
+            await callback.message.edit_text(
+                "🎉 У вас нет активных долгов!",
+                reply_markup=get_back_to_menu_keyboard()
+            )
+        except Exception:
+            await callback.message.answer(
+                "🎉 У вас нет активных долгов!",
+                reply_markup=get_back_to_menu_keyboard()
+            )
     else:
         total = sum(d['remaining'] for d in user_debts)
         text = f"💳 Ваши долги (всего: {int(total)}р):\n\n"
@@ -106,10 +104,16 @@ async def callback_my_debts(callback: CallbackQuery):
         if len(user_debts) > 5:
             text += f"\n\n... и ещё {len(user_debts) - 5} долгов"
         
-        await callback.message.edit_text(
-            text,
-            reply_markup=get_debts_keyboard(username, user_debts)
-        )
+        try:
+            await callback.message.edit_text(
+                text,
+                reply_markup=get_debts_keyboard(username, user_debts)
+            )
+        except Exception:
+            await callback.message.answer(
+                text,
+                reply_markup=get_debts_keyboard(username, user_debts)
+            )
     await callback.answer()
 
 
@@ -123,10 +127,16 @@ async def callback_statistics(callback: CallbackQuery):
 • Должников: {stats['debtors_count']}
 • Кредиторов: {stats['creditors_count']}"""
     
-    await callback.message.edit_text(
-        text,
-        reply_markup=get_back_to_menu_keyboard()
-    )
+    try:
+        await callback.message.edit_text(
+            text,
+            reply_markup=get_back_to_menu_keyboard()
+        )
+    except Exception:
+        await callback.message.answer(
+            text,
+            reply_markup=get_back_to_menu_keyboard()
+        )
     await callback.answer()
 
 
@@ -143,10 +153,16 @@ async def callback_history(callback: CallbackQuery):
             date_str = op['created_at'].strftime('%d.%m %H:%M')
             text += f"{date_str} | {op['username']}: {op['description']}\n"
     
-    await callback.message.edit_text(
-        text,
-        reply_markup=get_back_to_menu_keyboard()
-    )
+    try:
+        await callback.message.edit_text(
+            text,
+            reply_markup=get_back_to_menu_keyboard()
+        )
+    except Exception:
+        await callback.message.answer(
+            text,
+            reply_markup=get_back_to_menu_keyboard()
+        )
     await callback.answer()
 
 
@@ -165,10 +181,16 @@ async def callback_debts_by_expense(callback: CallbackQuery):
                 text += f"  • {debt['debtor']} должен {debt['creditor']} {int(debt['remaining'])}р\n"
             text += "\n"
     
-    await callback.message.edit_text(
-        text,
-        reply_markup=get_back_to_menu_keyboard()
-    )
+    try:
+        await callback.message.edit_text(
+            text,
+            reply_markup=get_back_to_menu_keyboard()
+        )
+    except Exception:
+        await callback.message.answer(
+            text,
+            reply_markup=get_back_to_menu_keyboard()
+        )
     await callback.answer()
 
 
@@ -299,14 +321,7 @@ async def handle_message(message: types.Message):
     if user_id in user_states:
         state = user_states[user_id]
         
-        # Проверяем не отмена ли это
-        if text.strip().lower() in ["отмена", "cancel", "назад"]:
-            del user_states[user_id]
-            await message.answer(
-                "❌ Создание расхода отменено",
-                reply_markup=get_main_menu_keyboard()
-            )
-            return
+        # Отмена через кнопку обрабатывается в callback_main_menu
         
         if state["step"] == "waiting_description":
             if not text.strip():
@@ -316,7 +331,7 @@ async def handle_message(message: types.Message):
             state["step"] = "waiting_amount"
             await message.answer(
                 "Введите сумму (например: 4200):\n\n"
-                "💡 Напишите 'отмена' чтобы отменить",
+                "💡 Нажмите 'Главное меню' чтобы отменить",
                 reply_markup=get_back_to_menu_keyboard()
             )
             return
@@ -333,7 +348,7 @@ async def handle_message(message: types.Message):
                 state["step"] = "waiting_participants"
                 await message.answer(
                     "Введите участников через @ (например: @Петя @Маша):\n\n"
-                    "💡 Напишите 'отмена' чтобы отменить",
+                    "💡 Нажмите 'Главное меню' чтобы отменить",
                     reply_markup=get_back_to_menu_keyboard()
                 )
                 return
@@ -342,13 +357,17 @@ async def handle_message(message: types.Message):
                 return
         elif state["step"] == "waiting_participants":
             if not text.strip():
-                await message.answer("Введите участников через @ (например: @Петя @Маша):")
+                await message.answer(
+                    "Введите участников через @ (например: @Петя @Маша):",
+                    reply_markup=get_back_to_menu_keyboard()
+                )
                 return
             participants = [p.replace('@', '') for p in text.split() if p.startswith('@')]
             if not participants:
                 await message.answer(
                     "Укажите участников через @ (например: @Петя @Маша):\n\n"
-                    "💡 Напишите 'отмена' чтобы отменить"
+                    "💡 Нажмите 'Главное меню' чтобы отменить",
+                    reply_markup=get_back_to_menu_keyboard()
                 )
                 return
             
@@ -374,89 +393,14 @@ async def handle_message(message: types.Message):
         # Если мы здесь, значит состояние есть но шаг не распознан - сбрасываем
         del user_states[user_id]
     
-    # Обработка reply keyboard кнопок (только если НЕ в FSM)
-    if text == "💳 Долги":
-        debts = db.get_debts()
-        user_debts = [d for d in debts if d['debtor'] == username]
-        if user_debts:
-            total = sum(d['remaining'] for d in user_debts)
-            response = f"💳 Ваши долги (всего: {int(total)}р):\n\n"
-            response += "\n".join([
-                f"• {d['creditor']}: {int(d['remaining'])}р"
-                for d in user_debts[:10]
-            ])
-        else:
-            response = "🎉 У вас нет активных долгов!"
-        await message.answer(response, reply_markup=get_main_menu_keyboard())
-        return
-    
-    elif text == "📊 Статистика":
-        stats = db.get_statistics()
-        response = f"""📊 Общая статистика:
-• Активных долгов: {stats['debt_count']}
-• Общая сумма: {int(stats['total_debt'])}р
-• Должников: {stats['debtors_count']}
-• Кредиторов: {stats['creditors_count']}"""
-        await message.answer(response, reply_markup=get_main_menu_keyboard())
-        return
-    
-    elif text == "📜 История":
-        history = db.get_operation_history(limit=10)
-        if history:
-            response = "📜 Последние операции:\n\n"
-            for op in history:
-                date_str = op['created_at'].strftime('%d.%m %H:%M')
-                response += f"{date_str} | {op['username']}: {op['description']}\n"
-        else:
-            response = "История пуста"
-        await message.answer(response, reply_markup=get_main_menu_keyboard())
-        return
-    
-    elif text == "📦 По расходам":
-        grouped = db.get_debts_grouped_by_expense()
-        if grouped:
-            response = "💳 Долги по расходам:\n\n"
-            for description, debts in list(grouped.items())[:5]:
-                response += f"📦 {description}:\n"
-                for debt in debts[:3]:
-                    response += f"  • {debt['debtor']} должен {debt['creditor']} {int(debt['remaining'])}р\n"
-                response += "\n"
-        else:
-            response = "Нет активных долгов 🎉"
-        await message.answer(response, reply_markup=get_main_menu_keyboard())
-        return
-    
-    elif text == "ℹ️ Помощь":
+    # Если пользователь НЕ в FSM, показываем только главное меню
+    # Текстовые команды отключены - только кнопки!
+    if text.strip() and not text.startswith("/"):
         await message.answer(
-            "ℹ️ Используйте кнопки для быстрого доступа или введите команды текстом",
+            "💡 Используйте кнопки для работы с ботом!\n\n"
+            "Нажмите на кнопки ниже чтобы начать:",
             reply_markup=get_main_menu_keyboard()
         )
-        return
-    
-    elif text == "📝 Создать":
-        user_states[user_id] = {"step": "waiting_description", "data": {}}
-        await message.answer(
-            "📝 Создание расхода\n\nВведите описание расхода (например: пицца):",
-            reply_markup=get_back_to_menu_keyboard()
-        )
-        return
-    
-    # Обычная обработка текстовых команд (только если НЕ в FSM)
-    # Но для упрощения - показываем подсказку про кнопки
-    if text.strip() and not text.startswith("/"):
-        # Если это не команда и не пустое - показываем подсказку
-        response = (
-            "💡 Используйте кнопки для работы с ботом!\n\n"
-            "Или введите команду текстом:\n"
-            "• \"пицца 4200 @Петя @Маша\" - создать расход\n"
-            "• \"долги\" - показать долги\n"
-            "• \"статистика\" - статистика"
-        )
-        await message.answer(response, reply_markup=get_main_menu_keyboard())
-    else:
-        # Обрабатываем как команду
-        response = debt_bot.process_message(text, username)
-        await message.answer(response, reply_markup=get_main_menu_keyboard())
 
 
 async def main():
