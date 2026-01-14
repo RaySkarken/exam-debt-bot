@@ -1,8 +1,6 @@
 # docker-compose.yml для запуска приложения
 # Роль: DevOps - оркестрация контейнеров
 
-version: '3.8'
-
 services:
   # Telegram бот
   bot:
